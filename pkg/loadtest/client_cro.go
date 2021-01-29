@@ -1,16 +1,16 @@
 package loadtest
 
 import (
-	"errors"
 	"fmt"
+	"strconv"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	cosmostypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 // MyABCIAppClientFactory creates instances of MyABCIAppClient
 type MyABCIAppClientFactory struct {
-	account    uint64
-	sequence   uint64
 	paraphrase string
-	max        uint64
 }
 
 // MyABCIAppClientFactory implements loadtest.ClientFactory
@@ -23,11 +23,14 @@ const jsonMsg = "{\"body\":{\"messages\":[{\"@type\":\"/cosmos.distribution.v1be
 // each client will be responsible for maintaining its own state in a
 // thread-safe manner.
 type MyABCIAppClient struct {
-	txs        map[uint64][]byte
-	sequence   uint64
-	count      uint64
-	max        uint64
-	paraphrase string
+	txs     map[uint64][]byte
+	lcd     *LcdClient
+	signer  *Signature
+	keyInfo keyring.Info
+	msg     cosmostypes.Tx
+	count   uint64
+	max     uint64
+	seq     uint64
 }
 
 // MyABCIAppClient implements loadtest.Client
@@ -45,35 +48,17 @@ func (f *MyABCIAppClientFactory) ValidateConfig(cfg Config) error {
 
 func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 	signer := DefaultSignature
-	_, err := signer.Recover(f.paraphrase)
+	info, err := signer.Recover(f.paraphrase)
 	if err != nil {
 		return nil, err
 	}
-	totalTxs := f.max + 2
-
-	fmt.Printf("Total Txs signed: %d \n", totalTxs)
-	if totalTxs < 1 {
-		return nil, errors.New("Invalid total txs")
-	}
+	fmt.Println("Wallet Address:", info.GetAddress().String())
 	msgTx, err := signer.ParseJson(jsonMsg)
 	if err != nil {
 		return nil, err
 	}
 
-	txs := make(map[uint64][]byte, totalTxs)
-	var i uint64
-	for i = 0; i < totalTxs; i++ {
-		seq := f.sequence + uint64(i)
-		data, err := signer.Sign(f.account, seq, msgTx)
-		if err != nil {
-			return nil, err
-		}
-
-		txs[seq] = data
-		// fmt.Println("sequence sign:", seq)
-	}
-
-	return &MyABCIAppClient{txs: txs, sequence: f.sequence, count: 0, max: f.max}, nil
+	return &MyABCIAppClient{signer: signer, keyInfo: info, msg: msgTx, max: 10, count: 0}, nil
 }
 
 // GenerateTx must return the raw bytes that make up the transaction for your
@@ -81,11 +66,47 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 // loadtest package, so don't worry about that. Only return an error here if you
 // want to completely fail the entire load test operation.
 func (c *MyABCIAppClient) GenerateTx() ([]byte, error) {
+
 	if c.count >= c.max {
-		return nil, errors.New("---Max Tx limit---")
+		c.count = 0
 	}
-	seq := c.sequence + c.count
+
+	if c.count == 0 {
+		err := c.makeTxs()
+		if err != nil {
+			return nil, err
+		}
+	}
+	seq := c.seq + c.count
 	c.count++
-	// fmt.Println("sequence send:", seq)
+
 	return c.txs[seq], nil
+}
+
+func (c *MyABCIAppClient) makeTxs() error {
+	account, err := c.lcd.Account(c.keyInfo.GetAddress().String())
+	if err != nil {
+		return err
+	}
+
+	totalTxs := c.max
+	accountNro, _ := strconv.ParseUint(account.Result.Value.AccountNumber, 10, 64)
+	sequence, _ := strconv.ParseUint(account.Result.Value.Sequence, 10, 64)
+
+	txs := make(map[uint64][]byte, totalTxs)
+	var i uint64
+	for i = 0; i < c.max; i++ {
+		seq := sequence + i
+		data, err := c.signer.Sign(accountNro, seq, c.msg)
+		if err != nil {
+			return err
+		}
+
+		txs[seq] = data
+	}
+
+	c.txs = txs
+	c.seq = sequence
+
+	return nil
 }
