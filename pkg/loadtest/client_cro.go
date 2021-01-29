@@ -2,6 +2,7 @@ package loadtest
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -58,7 +59,10 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 		return nil, err
 	}
 
-	return &MyABCIAppClient{signer: signer, keyInfo: info, msg: msgTx, max: 10, count: 0}, nil
+	client := &http.Client{}
+	lcd := NewLcdClient(client, cfg.LcdEndpoint)
+
+	return &MyABCIAppClient{signer: signer, keyInfo: info, msg: msgTx, lcd: lcd, max: 10, count: 0}, nil
 }
 
 // GenerateTx must return the raw bytes that make up the transaction for your

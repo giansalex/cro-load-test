@@ -36,6 +36,7 @@ type Config struct {
 	PeerConnectTimeout   int      `json:"peer_connect_timeout"`   // The maximum time to wait (in seconds) for all peers to connect, if ExpectPeers > 0.
 	StatsOutputFile      string   `json:"stats_output_file"`      // Where to store the final aggregate statistics file (in CSV format).
 	NoTrapInterrupts     bool     `json:"no_trap_interrupts"`     // Should we avoid trapping Ctrl+Break? Only relevant for standalone execution mode.
+	LcdEndpoint          string   `json:"lcd_endpoint"`           // A LCD endpoint.
 }
 
 // MasterConfig is the configuration options specific to a master node.
@@ -107,6 +108,9 @@ func (c Config) Validate() error {
 	}
 	if c.MinConnectivity < 0 {
 		return fmt.Errorf("invalid value for min-peer-connectivity: %d", c.MinConnectivity)
+	}
+	if c.LcdEndpoint == "" {
+		return fmt.Errorf("expected lcd endpoint")
 	}
 	return nil
 }
