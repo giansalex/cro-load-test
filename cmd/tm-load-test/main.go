@@ -44,7 +44,7 @@ NOTES:
 
 func main() {
 
-	wallet := os.Getenv("MAX")
+	wallet := os.Getenv("WALLET")
 	if wallet == "" {
 		log.Fatal("Required WALLET environment")
 	}
