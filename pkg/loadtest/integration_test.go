@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/interchainio/tm-load-test/pkg/loadtest"
+	"github.com/giansalex/cro-load-test/pkg/loadtest"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )

@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/interchainio/tm-load-test/internal/outagesim"
+	"github.com/giansalex/cro-load-test/internal/outagesim"
 )
 
 func main() {
