@@ -15,7 +15,7 @@ func NewLcdClient(client *http.Client, baseUrl string) *LcdClient {
 }
 
 func (lcd *LcdClient) Account(address string) (*AccountResponse, error) {
-	resp, err := lcd.client.Get(lcd.baseUrl + "auth/accounts/" + address)
+	resp, err := lcd.client.Get(lcd.baseUrl + "/auth/accounts/" + address)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (lcd *LcdClient) Account(address string) (*AccountResponse, error) {
 }
 
 func (lcd *LcdClient) Balances(address string) (*BalancesResponse, error) {
-	resp, err := lcd.client.Get(lcd.baseUrl + "bank/balances/" + address)
+	resp, err := lcd.client.Get(lcd.baseUrl + "/bank/balances/" + address)
 	if err != nil {
 		return nil, err
 	}
