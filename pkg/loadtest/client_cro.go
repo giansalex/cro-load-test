@@ -105,6 +105,7 @@ func (c *MyABCIAppClient) makeTxs() error {
 	accountNro, _ := strconv.ParseUint(account.Result.Value.AccountNumber, 10, 64)
 	sequence, _ := strconv.ParseUint(account.Result.Value.Sequence, 10, 64)
 
+	c.txs = nil
 	txs := make(map[uint64][]byte, totalTxs)
 	var i uint64
 	for i = 0; i < c.max; i++ {
