@@ -292,18 +292,12 @@ func (t *Transactor) sendTransactions() error {
 	// send as many transactions as we can, up to the send rate
 	totalSent := t.GetTxCount()
 	toSend := t.config.Rate
-	if (t.config.Count > 0) && ((totalSent + toSend) > t.config.Count) {
-		toSend = t.config.Count - totalSent
-		t.logger.Debug("Nearing max transaction count", "totalSent", totalSent, "maxTxCount", t.config.Count, "toSend", toSend)
-	}
+
 	if totalSent == 0 {
 		t.trackStartTime()
 	}
 	var sent int
-	var sentBytes int64
-	defer func() { t.trackSentTxs(sent, sentBytes) }()
 	t.logger.Info("Sending batch of transactions", "toSend", toSend)
-	// batchStartTime := time.Now()
 	for ; sent < toSend; sent++ {
 		tx, err := t.client.GenerateTx()
 		if err != nil {
@@ -312,11 +306,6 @@ func (t *Transactor) sendTransactions() error {
 		if err := t.writeTx(tx); err != nil {
 			return err
 		}
-		sentBytes += int64(len(tx))
-		// if we have to make way for the next batch
-		// if time.Since(batchStartTime) >= time.Duration(t.config.SendPeriod)*time.Second {
-		// 	break
-		// }
 	}
 	return nil
 }
