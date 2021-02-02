@@ -55,11 +55,11 @@ type Transactor struct {
 	progressCallbackInterval time.Duration                            // How frequently to call the progress update callback.
 	progressCallback         func(id int, txCount int, txBytes int64) // Called with the total number of transactions executed so far.
 
-	stopMtx   sync.RWMutex
-	stop      bool
-	stopBlock bool
-	sequence  uint64
-	stopErr   error // Did an error occur that triggered the stop?
+	stopMtx     sync.RWMutex
+	stop        bool
+	listenBlock bool
+	sequence    uint64
+	stopErr     error // Did an error occur that triggered the stop?
 }
 
 // NewTransactor initiates a WebSockets connection to the given host address.
@@ -194,16 +194,6 @@ func (t *Transactor) sendLoop() {
 		return err
 	})
 
-	// pingTicker := time.NewTicker(connPingPeriod)
-	// timeLimitTicker := time.NewTicker(time.Duration(t.config.Time) * time.Second)
-	// sendTicker := time.NewTicker(time.Duration(t.config.SendPeriod) * time.Second)
-	// progressTicker := time.NewTicker(t.getProgressCallbackInterval())
-	// defer func() {
-	// 	pingTicker.Stop()
-	// 	timeLimitTicker.Stop()
-	// 	sendTicker.Stop()
-	// 	progressTicker.Stop()
-	// }()
 	err := t.rpc.Start()
 	if err != nil {
 		return
@@ -236,22 +226,11 @@ func (t *Transactor) sendLoop() {
 		minSeqRequired := currentSeq + uint64(float32(t.config.Rate)*4.80)
 		t.logger.Info(fmt.Sprintf("Min Sequence %d", minSeqRequired))
 		t.setSequenceRequired(minSeqRequired)
-		t.setStopBlock(false)
+		t.setListenBlock(true)
 
 		<-block
 
-		t.setStopBlock(true)
-
-		// select {
-
-		// case <-progressTicker.C:
-		// 	t.reportProgress()
-
-		// case <-pingTicker.C:
-		// 	if err := t.sendPing(); err != nil {
-		// 		t.logger.Error("Failed to write ping message", "err", err)
-		// 		t.setStop(err)
-		// 	}
+		t.setListenBlock(false)
 	}
 }
 
@@ -285,15 +264,15 @@ func (t *Transactor) setStop(err error) {
 	t.stopMtx.Unlock()
 }
 
-func (t *Transactor) mustStopBlock() bool {
+func (t *Transactor) mustListenBlock() bool {
 	t.stopMtx.RLock()
 	defer t.stopMtx.RUnlock()
-	return t.stopBlock
+	return t.listenBlock
 }
 
-func (t *Transactor) setStopBlock(stop bool) {
+func (t *Transactor) setListenBlock(stop bool) {
 	t.stopMtx.Lock()
-	t.stopBlock = stop
+	t.listenBlock = stop
 	t.stopMtx.Unlock()
 }
 
@@ -361,7 +340,7 @@ func (t *Transactor) listenBlocks() (<-chan int64, error) {
 					return
 				}
 
-				if t.mustStopBlock() {
+				if !t.mustListenBlock() {
 					count = 0
 					continue
 				}
