@@ -24,6 +24,7 @@ type Config struct {
 	Connections          int      `json:"connections"`            // The number of WebSockets connections to make to each target endpoint.
 	Time                 int      `json:"time"`                   // The total time, in seconds, for which to handle the load test.
 	SendPeriod           int      `json:"send_period"`            // The period (in seconds) at which to send batches of transactions.
+	BlockPeriod          int      `json:"block_period"`           // The period block at which to send batches of transactions.
 	Rate                 int      `json:"rate"`                   // The number of transactions to generate, per send period.
 	Size                 int      `json:"size"`                   // The desired size of each generated transaction, in bytes.
 	Count                int      `json:"count"`                  // The maximum number of transactions to send. Set to -1 for unlimited.

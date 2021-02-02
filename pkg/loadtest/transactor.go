@@ -1,17 +1,22 @@
 package loadtest
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/giansalex/cro-load-test/internal/logging"
 	"github.com/gorilla/websocket"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -33,6 +38,8 @@ type Transactor struct {
 	client            Client
 	logger            logging.Logger
 	conn              *websocket.Conn
+	rpc               *rpchttp.HTTP
+	lcd               *LcdClient
 	broadcastTxMethod string
 	wg                sync.WaitGroup
 
@@ -48,9 +55,11 @@ type Transactor struct {
 	progressCallbackInterval time.Duration                            // How frequently to call the progress update callback.
 	progressCallback         func(id int, txCount int, txBytes int64) // Called with the total number of transactions executed so far.
 
-	stopMtx sync.RWMutex
-	stop    bool
-	stopErr error // Did an error occur that triggered the stop?
+	stopMtx   sync.RWMutex
+	stop      bool
+	stopBlock bool
+	sequence  uint64
+	stopErr   error // Did an error occur that triggered the stop?
 }
 
 // NewTransactor initiates a WebSockets connection to the given host address.
@@ -75,6 +84,12 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 	if err != nil {
 		return nil, err
 	}
+	rpc, err := rpchttp.New("tcp://127.0.0.1:26657", "/websocket")
+	if err != nil {
+		return nil, err
+	}
+	lcd := NewLcdClient(&http.Client{}, "http://127.0.0.1:1317")
+
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("failed to connect to remote WebSockets endpoint %s: %s (status code %d)", remoteAddr, resp.Status, resp.StatusCode)
 	}
@@ -86,6 +101,8 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 		client:                   client,
 		logger:                   logger,
 		conn:                     conn,
+		rpc:                      rpc,
+		lcd:                      lcd,
 		broadcastTxMethod:        "broadcast_tx_" + config.BroadcastTxMethod,
 		progressCallbackInterval: defaultProgressCallbackInterval,
 	}, nil
@@ -157,6 +174,8 @@ func (t *Transactor) receiveLoop() {
 				return
 			}
 		}
+		// fmt.Println("MsgType", r)
+		// fmt.Println("Data: ", string(d))
 		if t.mustStop() {
 			return
 		}
@@ -175,46 +194,64 @@ func (t *Transactor) sendLoop() {
 		return err
 	})
 
-	pingTicker := time.NewTicker(connPingPeriod)
-	timeLimitTicker := time.NewTicker(time.Duration(t.config.Time) * time.Second)
-	sendTicker := time.NewTicker(time.Duration(t.config.SendPeriod) * time.Second)
-	progressTicker := time.NewTicker(t.getProgressCallbackInterval())
-	defer func() {
-		pingTicker.Stop()
-		timeLimitTicker.Stop()
-		sendTicker.Stop()
-		progressTicker.Stop()
-	}()
-
+	// pingTicker := time.NewTicker(connPingPeriod)
+	// timeLimitTicker := time.NewTicker(time.Duration(t.config.Time) * time.Second)
+	// sendTicker := time.NewTicker(time.Duration(t.config.SendPeriod) * time.Second)
+	// progressTicker := time.NewTicker(t.getProgressCallbackInterval())
+	// defer func() {
+	// 	pingTicker.Stop()
+	// 	timeLimitTicker.Stop()
+	// 	sendTicker.Stop()
+	// 	progressTicker.Stop()
+	// }()
+	err := t.rpc.Start()
+	if err != nil {
+		return
+	}
+	defer t.rpc.Stop()
+	block, _ := t.listenBlocks()
 	for {
-		if t.config.Count > 0 && t.GetTxCount() >= t.config.Count {
-			t.logger.Info("Maximum transaction limit reached", "count", t.GetTxCount())
-			t.setStop(nil)
-		}
-		select {
-		case <-sendTicker.C:
-			if err := t.sendTransactions(); err != nil {
-				t.logger.Error("Failed to send transactions", "err", err)
-				t.setStop(err)
-			}
 
-		case <-progressTicker.C:
-			t.reportProgress()
-
-		case <-pingTicker.C:
-			if err := t.sendPing(); err != nil {
-				t.logger.Error("Failed to write ping message", "err", err)
-				t.setStop(err)
-			}
-
-		case <-timeLimitTicker.C:
-			t.logger.Info("Time limit reached for load testing")
-			t.setStop(nil)
-		}
 		if t.mustStop() {
 			t.close()
 			return
 		}
+
+		currentSeq, err := t.getLatestSequence()
+		if err != nil {
+			t.logger.Error("Cannot get account from LCD", "err", err)
+			t.setStop(err)
+		}
+
+		if err := t.sendTransactions(); err != nil {
+			t.logger.Error("Failed to send transactions", "err", err)
+			t.setStop(err)
+		}
+
+		if t.config.Count > 0 && t.GetTxCount() >= t.config.Count {
+			t.logger.Info("Maximum transaction limit reached", "count", t.GetTxCount())
+			t.setStop(nil)
+		}
+
+		minSeqRequired := currentSeq + uint64(float32(t.config.Rate)*4.80)
+		t.logger.Info(fmt.Sprintf("Min Sequence %d", minSeqRequired))
+		t.setSequenceRequired(minSeqRequired)
+		t.setStopBlock(false)
+
+		<-block
+
+		t.setStopBlock(true)
+
+		// select {
+
+		// case <-progressTicker.C:
+		// 	t.reportProgress()
+
+		// case <-pingTicker.C:
+		// 	if err := t.sendPing(); err != nil {
+		// 		t.logger.Error("Failed to write ping message", "err", err)
+		// 		t.setStop(err)
+		// 	}
 	}
 }
 
@@ -248,6 +285,30 @@ func (t *Transactor) setStop(err error) {
 	t.stopMtx.Unlock()
 }
 
+func (t *Transactor) mustStopBlock() bool {
+	t.stopMtx.RLock()
+	defer t.stopMtx.RUnlock()
+	return t.stopBlock
+}
+
+func (t *Transactor) setStopBlock(stop bool) {
+	t.stopMtx.Lock()
+	t.stopBlock = stop
+	t.stopMtx.Unlock()
+}
+
+func (t *Transactor) getSequenceRequired() uint64 {
+	t.stopMtx.RLock()
+	defer t.stopMtx.RUnlock()
+	return t.sequence
+}
+
+func (t *Transactor) setSequenceRequired(seq uint64) {
+	t.stopMtx.Lock()
+	t.sequence = seq
+	t.stopMtx.Unlock()
+}
+
 func (t *Transactor) sendTransactions() error {
 	// send as many transactions as we can, up to the send rate
 	totalSent := t.GetTxCount()
@@ -263,7 +324,7 @@ func (t *Transactor) sendTransactions() error {
 	var sentBytes int64
 	defer func() { t.trackSentTxs(sent, sentBytes) }()
 	t.logger.Info("Sending batch of transactions", "toSend", toSend)
-	batchStartTime := time.Now()
+	// batchStartTime := time.Now()
 	for ; sent < toSend; sent++ {
 		tx, err := t.client.GenerateTx()
 		if err != nil {
@@ -274,13 +335,73 @@ func (t *Transactor) sendTransactions() error {
 		}
 		sentBytes += int64(len(tx))
 		// if we have to make way for the next batch
-		if time.Since(batchStartTime) >= time.Duration(t.config.SendPeriod)*time.Second {
-			break
-		}
+		// if time.Since(batchStartTime) >= time.Duration(t.config.SendPeriod)*time.Second {
+		// 	break
+		// }
 	}
 	return nil
 }
 
+func (t *Transactor) listenBlocks() (<-chan int64, error) {
+	query := "tm.event = 'NewBlock'"
+	txs, err := t.rpc.Subscribe(context.Background(), "cro-load-test", query)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(chan int64)
+
+	go func() {
+		count := 0
+		for e := range txs {
+			switch data := e.Data.(type) {
+			case types.EventDataNewBlock:
+				if t.mustStop() {
+					out <- 0
+					return
+				}
+
+				if t.mustStopBlock() {
+					count = 0
+					continue
+				}
+				count++
+
+				if count >= t.config.BlockPeriod {
+					t.logger.Info(fmt.Sprintf("fire from block limit %d", data.Block.Height))
+					count = 0
+					out <- data.Block.Height
+					continue
+				}
+
+				currentSeq, err := t.getLatestSequence()
+				if err != nil {
+					t.logger.Error("Can't get account from lcd endpoint", "err", err)
+					continue
+				}
+
+				seq := t.getSequenceRequired()
+
+				if currentSeq > seq {
+					count = 0
+					t.logger.Info(fmt.Sprintf("Sequence %d, req: %d", currentSeq, seq))
+					out <- data.Block.Height
+				}
+			}
+		}
+	}()
+
+	return out, nil
+}
+
+func (t *Transactor) getLatestSequence() (uint64, error) {
+	resp, err := t.lcd.Account("cro1lglgwsrt7m293me6kgwh4vnw55yrgulggss8t5")
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(resp.Result.Value.Sequence, 10, 64)
+}
 func (t *Transactor) trackStartTime() {
 	t.statsMtx.Lock()
 	t.startTime = time.Now()
