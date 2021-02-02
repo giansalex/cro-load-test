@@ -20,11 +20,12 @@ var validEndpointSelectMethods = map[string]interface{}{
 // Config represents the configuration for a single client (i.e. standalone or
 // slave).
 type Config struct {
-	ClientFactory        string   `json:"client_factory"`         // Which client factory should we use for load testing?
-	Connections          int      `json:"connections"`            // The number of WebSockets connections to make to each target endpoint.
-	Time                 int      `json:"time"`                   // The total time, in seconds, for which to handle the load test.
-	SendPeriod           int      `json:"send_period"`            // The period (in seconds) at which to send batches of transactions.
-	BlockPeriod          int      `json:"block_period"`           // The period block at which to send batches of transactions.
+	ClientFactory        string   `json:"client_factory"` // Which client factory should we use for load testing?
+	Connections          int      `json:"connections"`    // The number of WebSockets connections to make to each target endpoint.
+	Time                 int      `json:"time"`           // The total time, in seconds, for which to handle the load test.
+	SendPeriod           int      `json:"send_period"`    // The period (in seconds) at which to send batches of transactions.
+	BlockPeriod          int      `json:"block_period"`   // The period block at which to send batches of transactions.
+	RatePercent          float32  `json:"rate_percent"`
 	Rate                 int      `json:"rate"`                   // The number of transactions to generate, per send period.
 	Size                 int      `json:"size"`                   // The desired size of each generated transaction, in bytes.
 	Count                int      `json:"count"`                  // The maximum number of transactions to send. Set to -1 for unlimited.

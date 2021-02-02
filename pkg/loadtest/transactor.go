@@ -200,6 +200,7 @@ func (t *Transactor) sendLoop() {
 	}
 	defer t.rpc.Stop()
 	block, _ := t.listenBlocks()
+	minRate := uint64(float32(t.config.Rate) * t.config.RatePercent)
 	for {
 
 		if t.mustStop() {
@@ -223,7 +224,7 @@ func (t *Transactor) sendLoop() {
 			t.setStop(nil)
 		}
 
-		minSeqRequired := currentSeq + uint64(float32(t.config.Rate)*4.80)
+		minSeqRequired := currentSeq + minRate
 		t.logger.Info(fmt.Sprintf("Min Sequence %d", minSeqRequired))
 		t.setSequenceRequired(minSeqRequired)
 		t.setListenBlock(true)
