@@ -84,11 +84,11 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 	if err != nil {
 		return nil, err
 	}
-	rpc, err := rpchttp.New("tcp://127.0.0.1:26657", "/websocket")
+	rpc, err := rpchttp.New("tcp://"+u.Host, "/websocket")
 	if err != nil {
 		return nil, err
 	}
-	lcd := NewLcdClient(&http.Client{}, "http://127.0.0.1:1317")
+	lcd := NewLcdClient(&http.Client{}, config.LcdEndpoint)
 
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("failed to connect to remote WebSockets endpoint %s: %s (status code %d)", remoteAddr, resp.Status, resp.StatusCode)
