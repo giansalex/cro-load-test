@@ -196,10 +196,18 @@ func (t *Transactor) sendLoop() {
 
 	err := t.rpc.Start()
 	if err != nil {
+		t.logger.Error("Cannot connect rpc", "err", err)
+		t.setStop(err)
 		return
 	}
 	defer t.rpc.Stop()
-	block, _ := t.listenBlocks()
+	block, err := t.listenBlocks()
+	if err != nil {
+		t.logger.Error("Cannot subscribe to listen blocks", "err", err)
+		t.setStop(err)
+		return
+	}
+
 	minRate := uint64(float32(t.config.Rate) * t.config.RatePercent)
 	for {
 
