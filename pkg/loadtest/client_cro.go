@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
+	cosmosclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	cosmostypes "github.com/cosmos/cosmos-sdk/types"
+	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 )
 
 // MyABCIAppClientFactory creates instances of MyABCIAppClient
@@ -17,8 +19,6 @@ type MyABCIAppClientFactory struct {
 // MyABCIAppClientFactory implements loadtest.ClientFactory
 var _ ClientFactory = (*MyABCIAppClientFactory)(nil)
 
-const jsonMsg = "{\"body\":{\"messages\":[{\"@type\":\"/cosmos.distribution.v1beta1.MsgSetWithdrawAddress\",\"delegator_address\":\"cro1lglgwsrt7m293me6kgwh4vnw55yrgulggss8t5\",\"withdraw_address\":\"cro1lglgwsrt7m293me6kgwh4vnw55yrgulggss8t5\"}],\"memo\":\"\",\"timeout_height\":\"0\",\"extension_options\":[],\"non_critical_extension_options\":[]},\"auth_info\":{\"signer_infos\":[],\"fee\":{\"amount\":[{\"denom\":\"basetcro\",\"amount\":\"20000\"}],\"gas_limit\":\"200000\",\"payer\":\"\",\"granter\":\"\"}},\"signatures\":[]}"
-
 // MyABCIAppClient is responsible for generating transactions. Only one client
 // will be created per connection to the remote Tendermint RPC endpoint, and
 // each client will be responsible for maintaining its own state in a
@@ -28,7 +28,7 @@ type MyABCIAppClient struct {
 	lcd     *LcdClient
 	signer  *Signature
 	keyInfo keyring.Info
-	msg     cosmostypes.Tx
+	txB     cosmosclient.TxBuilder
 	count   uint64
 	max     uint64
 	seq     uint64
@@ -53,19 +53,28 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Wallet Address:", info.GetAddress().String())
-	msgTx, err := signer.ParseJson(jsonMsg)
-	if err != nil {
-		return nil, err
-	}
+	address := info.GetAddress().String()
+	fmt.Println("Wallet Address:", address)
 
 	client := &http.Client{}
 	lcd := NewLcdClient(client, cfg.LcdEndpoint)
 
+	withdrawAddr, err := cosmostypes.AccAddressFromBech32(address)
+	msgTx := distrtypes.NewMsgSetWithdrawAddress(withdrawAddr, withdrawAddr)
+	txBuilder := signer.GetTxConfig().NewTxBuilder()
+	err = txBuilder.SetMsgs(msgTx)
+	if err != nil {
+		return nil, err
+	}
+
+	dec := cosmostypes.NewDec(60000)
+	txBuilder.SetFeeAmount(cosmostypes.NewCoins(cosmostypes.NewCoin("basetcro", dec.RoundInt())))
+	txBuilder.SetGasLimit(200000)
+
 	abciClient := &MyABCIAppClient{
 		signer:  signer,
 		keyInfo: info,
-		msg:     msgTx,
+		txB:     txBuilder,
 		lcd:     lcd,
 		max:     uint64(cfg.Rate),
 		count:   0,
@@ -105,12 +114,14 @@ func (c *MyABCIAppClient) makeTxs() error {
 	accountNro, _ := strconv.ParseUint(account.Result.Value.AccountNumber, 10, 64)
 	sequence, _ := strconv.ParseUint(account.Result.Value.Sequence, 10, 64)
 
+	c.txB.SetTimeoutHeight(2500)
+
 	c.txs = nil
 	txs := make(map[uint64][]byte, totalTxs)
 	var i uint64
 	for i = 0; i < c.max; i++ {
 		seq := sequence + i
-		data, err := c.signer.Sign(accountNro, seq, c.msg)
+		data, err := c.signer.Sign(accountNro, seq, c.txB)
 		if err != nil {
 			return err
 		}

@@ -1,6 +1,7 @@
 package loadtest
 
 import (
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
@@ -56,7 +57,13 @@ func (signature *Signature) Recover(paraphrase string) (keyring.Info, error) {
 	return info, nil
 }
 
-func (signature *Signature) Sign(accNro, sequence uint64, msgTx cosmostypes.Tx) ([]byte, error) {
+func (signature *Signature) GetTxConfig() client.TxConfig {
+	marshaler := codec.NewProtoCodec(signature.interfacesRegistry)
+
+	return authtx.NewTxConfig(marshaler, authtx.DefaultSignModes)
+}
+
+func (signature *Signature) Sign(accNro, sequence uint64, txBuilder client.TxBuilder) ([]byte, error) {
 
 	marshaler := codec.NewProtoCodec(signature.interfacesRegistry)
 	txConfig := authtx.NewTxConfig(marshaler, authtx.DefaultSignModes)
@@ -71,13 +78,7 @@ func (signature *Signature) Sign(accNro, sequence uint64, msgTx cosmostypes.Tx) 
 	if err != nil {
 		return nil, err
 	}
-
 	pubKey := key.GetPubKey()
-
-	txBuilder, err := txConfig.WrapTxBuilder(msgTx)
-	if err != nil {
-		return nil, err
-	}
 
 	signMode := signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON
 	bytesToSign, err := txConfig.SignModeHandler().GetSignBytes(signMode, signerData, txBuilder.GetTx())
