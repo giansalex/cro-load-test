@@ -32,6 +32,7 @@ type MyABCIAppClient struct {
 	count   uint64
 	max     uint64
 	seq     uint64
+	bloclP  uint64
 }
 
 // MyABCIAppClient implements loadtest.Client
@@ -77,6 +78,7 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 		txB:     txBuilder,
 		lcd:     lcd,
 		max:     uint64(cfg.Rate),
+		bloclP:  uint64(cfg.BlockPeriod),
 		count:   0,
 	}
 	return abciClient, nil
@@ -113,8 +115,9 @@ func (c *MyABCIAppClient) makeTxs() error {
 	totalTxs := c.max
 	accountNro, _ := strconv.ParseUint(account.Result.Value.AccountNumber, 10, 64)
 	sequence, _ := strconv.ParseUint(account.Result.Value.Sequence, 10, 64)
+	height, _ := strconv.ParseUint(account.Height, 10, 64)
 
-	c.txB.SetTimeoutHeight(2500)
+	c.txB.SetTimeoutHeight(height + c.bloclP)
 
 	c.txs = nil
 	txs := make(map[uint64][]byte, totalTxs)

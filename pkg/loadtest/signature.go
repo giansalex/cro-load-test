@@ -98,7 +98,7 @@ func (signature *Signature) Sign(accNro, sequence uint64, txBuilder client.TxBui
 	sig := signing.SignatureV2{
 		PubKey:   pubKey,
 		Data:     &sigData,
-		Sequence: sequence,
+		Sequence: 0,
 	}
 
 	err = txBuilder.SetSignatures(sig)
