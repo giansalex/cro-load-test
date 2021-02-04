@@ -45,13 +45,14 @@ NOTES:
 func main() {
 
 	wallet := os.Getenv("WALLET")
-	if wallet == "" {
-		log.Fatal("Required WALLET environment")
+	chainID := os.Getenv("CHAINID")
+	if wallet == "" || chainID == "" {
+		log.Fatal("Required WALLET, CHAINID environment")
 	}
 
 	configCro()
 
-	appFactory := loadtest.NewABCIAppClientFactory(wallet)
+	appFactory := loadtest.NewABCIAppClientFactory(wallet, chainID)
 
 	if err := loadtest.RegisterClientFactory("cro-crossfire", appFactory); err != nil {
 		panic(err)

@@ -14,6 +14,7 @@ import (
 // MyABCIAppClientFactory creates instances of MyABCIAppClient
 type MyABCIAppClientFactory struct {
 	paraphrase string
+	chainID    string
 }
 
 // MyABCIAppClientFactory implements loadtest.ClientFactory
@@ -38,8 +39,8 @@ type MyABCIAppClient struct {
 // MyABCIAppClient implements loadtest.Client
 var _ Client = (*MyABCIAppClient)(nil)
 
-func NewABCIAppClientFactory(paraphrase string) *MyABCIAppClientFactory {
-	return &MyABCIAppClientFactory{paraphrase: paraphrase}
+func NewABCIAppClientFactory(paraphrase, chainID string) *MyABCIAppClientFactory {
+	return &MyABCIAppClientFactory{paraphrase, chainID}
 }
 
 func (f *MyABCIAppClientFactory) ValidateConfig(cfg Config) error {
@@ -49,7 +50,7 @@ func (f *MyABCIAppClientFactory) ValidateConfig(cfg Config) error {
 }
 
 func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
-	signer := DefaultSignature
+	signer := NewSignature(f.chainID).RegisterInterfaces(RegisterDefaultInterfaces)
 	info, err := signer.Recover(f.paraphrase)
 	if err != nil {
 		return nil, err

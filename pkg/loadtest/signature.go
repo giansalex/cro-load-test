@@ -19,6 +19,7 @@ const (
 type Signature struct {
 	keyBase            keyring.Keyring
 	interfacesRegistry codectypes.InterfaceRegistry
+	chainID            string
 }
 
 // RegisterInterfaces register decoding interface to the decoder by using the provided interface
@@ -69,7 +70,7 @@ func (signature *Signature) Sign(accNro, sequence uint64, txBuilder client.TxBui
 	txConfig := authtx.NewTxConfig(marshaler, authtx.DefaultSignModes)
 
 	signerData := authsigning.SignerData{
-		ChainID:       "crossfire",
+		ChainID:       signature.chainID,
 		AccountNumber: accNro,
 		Sequence:      sequence,
 	}
@@ -124,13 +125,11 @@ func (signature *Signature) ParseJson(json string) (cosmostypes.Tx, error) {
 }
 
 // NewDecoder creates a new decoder
-func NewSignature() *Signature {
+func NewSignature(chainID string) *Signature {
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
 
 	return &Signature{
 		interfacesRegistry: interfaceRegistry,
+		chainID:            chainID,
 	}
 }
-
-// DefaultDecoder is a decoder with all Cosmos builtin modules interfaces registered
-var DefaultSignature = NewSignature().RegisterInterfaces(RegisterDefaultInterfaces)
