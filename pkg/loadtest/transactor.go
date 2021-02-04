@@ -252,6 +252,7 @@ func (t *Transactor) sendLoop() {
 		}
 
 		if countSame > 3 {
+			t.logger.Info("Reset mempool")
 			t.resetMempool()
 			countSame = 0
 		}
@@ -316,7 +317,10 @@ func (t *Transactor) setSequenceRequired(seq uint64) {
 
 func (t *Transactor) resetMempool() {
 	time.Sleep(10 * time.Second)
-	t.crpc.UnsafeFlushMempool()
+	err := t.crpc.UnsafeFlushMempool()
+	if err != nil {
+		t.logger.Error("Cannot reset mempool", "err", err)
+	}
 	time.Sleep(10 * time.Second)
 }
 
