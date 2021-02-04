@@ -39,6 +39,7 @@ type Transactor struct {
 	logger            logging.Logger
 	conn              *websocket.Conn
 	rpc               *rpchttp.HTTP
+	crpc              *RpcClient
 	lcd               *LcdClient
 	broadcastTxMethod string
 	wg                sync.WaitGroup
@@ -89,6 +90,7 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 		return nil, err
 	}
 	lcd := NewLcdClient(&http.Client{}, config.LcdEndpoint)
+	crpc := NewRpcClient(&http.Client{}, "http://"+u.Host)
 
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("failed to connect to remote WebSockets endpoint %s: %s (status code %d)", remoteAddr, resp.Status, resp.StatusCode)
@@ -102,6 +104,7 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 		logger:                   logger,
 		conn:                     conn,
 		rpc:                      rpc,
+		crpc:                     crpc,
 		lcd:                      lcd,
 		broadcastTxMethod:        "broadcast_tx_" + config.BroadcastTxMethod,
 		progressCallbackInterval: defaultProgressCallbackInterval,
@@ -209,6 +212,8 @@ func (t *Transactor) sendLoop() {
 	}
 
 	minRate := uint64(float32(t.config.Rate) * t.config.RatePercent)
+	var lastSeq uint64 = 0
+	countSame := 0
 	for {
 
 		if t.mustStop() {
@@ -235,11 +240,23 @@ func (t *Transactor) sendLoop() {
 		minSeqRequired := currentSeq + minRate
 		t.logger.Info(fmt.Sprintf("Min Sequence %d", minSeqRequired))
 		t.setSequenceRequired(minSeqRequired)
+
 		t.setListenBlock(true)
-
 		<-block
-
 		t.setListenBlock(false)
+
+		if currentSeq != lastSeq {
+			countSame = 0
+		} else {
+			countSame++
+		}
+
+		if countSame > 3 {
+			t.resetMempool()
+			countSame = 0
+		}
+
+		lastSeq = currentSeq
 	}
 }
 
@@ -295,6 +312,12 @@ func (t *Transactor) setSequenceRequired(seq uint64) {
 	t.stopMtx.Lock()
 	t.sequence = seq
 	t.stopMtx.Unlock()
+}
+
+func (t *Transactor) resetMempool() {
+	time.Sleep(10 * time.Second)
+	t.crpc.UnsafeFlushMempool()
+	time.Sleep(10 * time.Second)
 }
 
 func (t *Transactor) sendTransactions() error {
