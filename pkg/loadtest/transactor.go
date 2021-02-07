@@ -257,6 +257,7 @@ func (t *Transactor) sendLoop() {
 			t.logger.Info("Reset mempool 2")
 			t.resetMempool()
 			countSame = 0
+			return
 		}
 
 		lastSeq = currentSeq
@@ -373,13 +374,6 @@ func (t *Transactor) listenBlocks() (<-chan int64, error) {
 				}
 				count++
 
-				if count >= t.config.BlockPeriod {
-					t.logger.Info(fmt.Sprintf("fire from block limit %d", data.Block.Height))
-					count = 0
-					out <- data.Block.Height
-					continue
-				}
-
 				currentSeq, err := t.getLatestSequence()
 				if err != nil {
 					t.logger.Error("Can't get account from lcd endpoint", "err", err)
@@ -388,9 +382,16 @@ func (t *Transactor) listenBlocks() (<-chan int64, error) {
 
 				seq := t.getSequenceRequired()
 
-				if currentSeq > seq {
+				if currentSeq >= seq {
 					count = 0
-					t.logger.Info(fmt.Sprintf("Sequence %d, req: %d", currentSeq, seq))
+					t.logger.Info(fmt.Sprintf("Sequence %d, block: %d", currentSeq, data.Block.Height))
+					out <- data.Block.Height
+					continue
+				}
+
+				if count >= t.config.BlockPeriod {
+					t.logger.Info(fmt.Sprintf("fire from block limit %d", data.Block.Height))
+					count = 0
 					out <- data.Block.Height
 				}
 			}
