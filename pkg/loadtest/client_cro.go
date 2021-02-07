@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	cosmostypes "github.com/cosmos/cosmos-sdk/types"
 	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	"github.com/giansalex/cro-load-test/internal/logging"
 )
 
 // MyABCIAppClientFactory creates instances of MyABCIAppClient
@@ -30,6 +31,7 @@ type MyABCIAppClient struct {
 	signer  *Signature
 	keyInfo keyring.Info
 	txB     cosmosclient.TxBuilder
+	logger  logging.Logger
 	count   uint64
 	max     uint64
 	seq     uint64
@@ -56,7 +58,9 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 		return nil, err
 	}
 	address := info.GetAddress().String()
-	fmt.Println("Wallet Address:", address)
+	logger := logging.NewLogrusLogger("cro-client")
+
+	logger.Info("Wallet Address:" + address)
 
 	client := &http.Client{}
 	lcd := NewLcdClient(client, cfg.LcdEndpoint)
@@ -77,6 +81,7 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 		signer:  signer,
 		keyInfo: info,
 		txB:     txBuilder,
+		logger:  logger,
 		lcd:     lcd,
 		max:     uint64(cfg.Rate),
 		bloclP:  uint64(cfg.BlockPeriod),
@@ -117,8 +122,10 @@ func (c *MyABCIAppClient) makeTxs() error {
 	accountNro, _ := strconv.ParseUint(account.Result.Value.AccountNumber, 10, 64)
 	sequence, _ := strconv.ParseUint(account.Result.Value.Sequence, 10, 64)
 	height, _ := strconv.ParseUint(account.Height, 10, 64)
+	expireHeight := height + c.bloclP
 
-	c.txB.SetTimeoutHeight(height + c.bloclP)
+	c.logger.Info(fmt.Sprintf("Block Expire: %d", expireHeight))
+	c.txB.SetTimeoutHeight(expireHeight)
 
 	c.txs = nil
 	txs := make(map[uint64][]byte, totalTxs)
