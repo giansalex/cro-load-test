@@ -61,6 +61,7 @@ type Transactor struct {
 	listenBlock bool
 	sequence    uint64
 	stopErr     error // Did an error occur that triggered the stop?
+	cancel      chan int
 }
 
 // NewTransactor initiates a WebSockets connection to the given host address.
@@ -108,6 +109,7 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 		lcd:                      lcd,
 		broadcastTxMethod:        "broadcast_tx_" + config.BroadcastTxMethod,
 		progressCallbackInterval: defaultProgressCallbackInterval,
+		cancel:                   make(chan int),
 	}, nil
 }
 
@@ -132,6 +134,7 @@ func (t *Transactor) Start() {
 // until it has completely stopped. To wait, call the Transactor.Wait() method.
 func (t *Transactor) Cancel() {
 	t.setStop(fmt.Errorf("transactor operations cancelled"))
+	t.cancel <- 1
 }
 
 // Wait will block until the transactor terminates.
@@ -262,7 +265,11 @@ func (t *Transactor) sendLoop() {
 		t.setSequenceRequired(minSeqRequired)
 
 		t.setListenBlock(true)
-		<-block
+		select {
+		case <-block:
+		case <-t.cancel:
+			t.logger.Info("Cancel Listened")
+		}
 		t.setListenBlock(false)
 	}
 }
