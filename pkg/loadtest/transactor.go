@@ -236,7 +236,7 @@ func (t *Transactor) sendLoop() {
 			countSame++
 		}
 
-		if countSame > 2 {
+		if countSame > 1 {
 			t.logger.Info("Reset mempool 1")
 			t.resetMempool()
 			t.logger.Info("Reset mempool 2")
