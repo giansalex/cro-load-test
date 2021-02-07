@@ -227,24 +227,6 @@ func (t *Transactor) sendLoop() {
 			t.setStop(err)
 		}
 
-		if err := t.sendTransactions(); err != nil {
-			t.logger.Error("Failed to send transactions", "err", err)
-			t.setStop(err)
-		}
-
-		if t.config.Count > 0 && t.GetTxCount() >= t.config.Count {
-			t.logger.Info("Maximum transaction limit reached", "count", t.GetTxCount())
-			t.setStop(nil)
-		}
-
-		minSeqRequired := currentSeq + minRate
-		t.logger.Info(fmt.Sprintf("Min Sequence %d", minSeqRequired))
-		t.setSequenceRequired(minSeqRequired)
-
-		t.setListenBlock(true)
-		<-block
-		t.setListenBlock(false)
-
 		if currentSeq != lastSeq {
 			countSame = 0
 		} else {
@@ -257,10 +239,31 @@ func (t *Transactor) sendLoop() {
 			t.logger.Info("Reset mempool 2")
 			t.resetMempool()
 			countSame = 0
+			t.setStop(nil)
+			t.close()
 			return
 		}
 
 		lastSeq = currentSeq
+
+		minSeqRequired := currentSeq + minRate
+		t.logger.Info(fmt.Sprintf("Min Sequence %d", minSeqRequired))
+
+		if err := t.sendTransactions(); err != nil {
+			t.logger.Error("Failed to send transactions", "err", err)
+			t.setStop(err)
+		}
+
+		if t.config.Count > 0 && t.GetTxCount() >= t.config.Count {
+			t.logger.Info("Maximum transaction limit reached", "count", t.GetTxCount())
+			t.setStop(nil)
+		}
+
+		t.setSequenceRequired(minSeqRequired)
+
+		t.setListenBlock(true)
+		<-block
+		t.setListenBlock(false)
 	}
 }
 
