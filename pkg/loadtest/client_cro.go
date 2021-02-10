@@ -73,9 +73,10 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 		return nil, err
 	}
 
-	dec := cosmostypes.NewDec(60000)
+	fee := float64(cfg.GasPrices) * float64(cfg.Gas)
+	dec := cosmostypes.NewDec(int64(fee))
 	txBuilder.SetFeeAmount(cosmostypes.NewCoins(cosmostypes.NewCoin("basetcro", dec.RoundInt())))
-	txBuilder.SetGasLimit(200000)
+	txBuilder.SetGasLimit(cfg.Gas)
 
 	abciClient := &MyABCIAppClient{
 		signer:  signer,
