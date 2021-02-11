@@ -228,6 +228,7 @@ func (t *Transactor) sendLoop() {
 		if err != nil {
 			t.logger.Error("Cannot get account from LCD", "err", err)
 			t.setStop(err)
+			continue
 		}
 
 		if currentSeq != lastSeq {
@@ -255,11 +256,7 @@ func (t *Transactor) sendLoop() {
 		if err := t.sendTransactions(); err != nil {
 			t.logger.Error("Failed to send transactions", "err", err)
 			t.setStop(err)
-		}
-
-		if t.config.Count > 0 && t.GetTxCount() >= t.config.Count {
-			t.logger.Info("Maximum transaction limit reached", "count", t.GetTxCount())
-			t.setStop(nil)
+			continue
 		}
 
 		t.setSequenceRequired(minSeqRequired)
