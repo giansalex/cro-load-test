@@ -62,6 +62,7 @@ type Transactor struct {
 	sequence    uint64
 	stopErr     error // Did an error occur that triggered the stop?
 	cancel      chan int
+	accAddress  string
 }
 
 // NewTransactor initiates a WebSockets connection to the given host address.
@@ -96,6 +97,10 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("failed to connect to remote WebSockets endpoint %s: %s (status code %d)", remoteAddr, resp.Status, resp.StatusCode)
 	}
+
+	account, _ := client.GetAccount()
+	address := account.GetAddress().String()
+
 	logger := logging.NewLogrusLogger(fmt.Sprintf("transactor[%s]", u.String()))
 	logger.Info("Connected to remote Tendermint WebSockets RPC")
 	return &Transactor{
@@ -110,6 +115,7 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 		broadcastTxMethod:        "broadcast_tx_" + config.BroadcastTxMethod,
 		progressCallbackInterval: defaultProgressCallbackInterval,
 		cancel:                   make(chan int),
+		accAddress:               address,
 	}, nil
 }
 
@@ -404,7 +410,7 @@ func (t *Transactor) listenBlocks() (<-chan int64, error) {
 }
 
 func (t *Transactor) getLatestSequence() (uint64, error) {
-	resp, err := t.lcd.Account("cro1lglgwsrt7m293me6kgwh4vnw55yrgulggss8t5")
+	resp, err := t.lcd.Account(t.accAddress)
 	if err != nil {
 		return 0, err
 	}
