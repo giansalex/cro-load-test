@@ -55,7 +55,7 @@ func buildCLI(cli *CLIConfig, logger logging.Logger) *cobra.Command {
 	rootCmd.PersistentFlags().IntVarP(&cfg.SendPeriod, "send-period", "p", 1, "The period (in seconds) at which to send batches of transactions")
 	rootCmd.PersistentFlags().IntVarP(&cfg.BlockPeriod, "block-period", "b", 5, "The num block period at which to send batches of transactions")
 	rootCmd.PersistentFlags().IntVarP(&cfg.Rate, "rate", "r", 1000, "The number of transactions to generate each second on each connection, to each endpoint")
-	rootCmd.PersistentFlags().Float32VarP(&cfg.RatePercent, "rate-percent", "f", 0.8, "The rate percent complete for next batch transactions")
+	rootCmd.PersistentFlags().Float32VarP(&cfg.RatePercent, "rate-percent", "f", 1.0, "The rate percent complete for next batch transactions")
 	rootCmd.PersistentFlags().IntVarP(&cfg.Size, "size", "s", 250, "The size of each transaction, in bytes - must be greater than 40")
 	rootCmd.PersistentFlags().IntVarP(&cfg.Count, "count", "N", -1, "The maximum number of transactions to send - set to -1 to turn off this limit")
 	rootCmd.PersistentFlags().StringVar(&cfg.BroadcastTxMethod, "broadcast-tx-method", "async", "The broadcast_tx method to use when submitting transactions - can be async, sync or commit")
