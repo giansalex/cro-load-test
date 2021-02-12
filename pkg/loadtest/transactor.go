@@ -335,13 +335,8 @@ func (t *Transactor) resetMempool() {
 }
 
 func (t *Transactor) sendTransactions() error {
-	// send as many transactions as we can, up to the send rate
-	totalSent := t.GetTxCount()
 	toSend := t.config.Rate
 
-	if totalSent == 0 {
-		t.trackStartTime()
-	}
 	var sent int
 	t.logger.Info("Sending batch of transactions", "toSend", toSend)
 	for ; sent < toSend; sent++ {
