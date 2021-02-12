@@ -33,7 +33,7 @@ func (signature *Signature) RegisterInterfaces(registry func(registry codectypes
 func (signature *Signature) Import(armor, pass string) error {
 	kb := keyring.NewInMemory()
 
-	err := kb.ImportPrivKey("golang", armor, pass)
+	err := kb.ImportPrivKey(accounName, armor, pass)
 	if err != nil {
 		return err
 	}
