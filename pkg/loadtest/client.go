@@ -1,6 +1,10 @@
 package loadtest
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+)
 
 // ClientFactory produces load testing clients.
 type ClientFactory interface {
@@ -15,6 +19,7 @@ type ClientFactory interface {
 
 // Client generates transactions to be sent to a specific endpoint.
 type Client interface {
+	GetAccount() (keyring.Info, error)
 	// GenerateTx must generate a raw transaction to be sent to the relevant
 	// broadcast_tx method for a given endpoint.
 	GenerateTx() ([]byte, error)

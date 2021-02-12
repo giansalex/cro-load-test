@@ -91,6 +91,11 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 	return abciClient, nil
 }
 
+// GetAccount must return current account
+func (c *MyABCIAppClient) GetAccount() (keyring.Info, error) {
+	return c.keyInfo, nil
+}
+
 // GenerateTx must return the raw bytes that make up the transaction for your
 // ABCI app. The conversion to base64 will automatically be handled by the
 // loadtest package, so don't worry about that. Only return an error here if you
