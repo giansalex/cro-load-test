@@ -256,15 +256,14 @@ func (t *Transactor) sendLoop() {
 
 		lastSeq = currentSeq
 
-		minSeqRequired := currentSeq + minRate
-		t.logger.Info(fmt.Sprintf("Min Sequence %d", minSeqRequired))
-
 		if err := t.sendTransactions(); err != nil {
 			t.logger.Error("Failed to send transactions", "err", err)
 			t.setStop(err)
 			continue
 		}
 
+		minSeqRequired := currentSeq + minRate
+		t.logger.Info(fmt.Sprintf("Target Sequence: %d", minSeqRequired))
 		t.setSequenceRequired(minSeqRequired)
 
 		t.setListenBlock(true)
