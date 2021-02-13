@@ -162,7 +162,7 @@ func (c *MyABCIAppClient) makeTxs() error {
 	height, _ := strconv.ParseUint(account.Height, 10, 64)
 	expireHeight := height + c.bloclP
 
-	c.logger.Info(fmt.Sprintf("Block Expire: %d", expireHeight))
+	c.logger.Info(fmt.Sprintf("sending %d txs (Block Expire: %d)", totalTxs, expireHeight))
 	c.txB.SetTimeoutHeight(expireHeight)
 
 	c.txs = nil

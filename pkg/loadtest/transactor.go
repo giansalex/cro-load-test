@@ -313,7 +313,6 @@ func (t *Transactor) sendTransactions() error {
 	toSend := t.config.Rate
 
 	var sent int
-	t.logger.Info("Sending batch of transactions", "toSend", toSend)
 	for ; sent < toSend; sent++ {
 		tx, err := t.client.GenerateTx()
 		if err != nil {
