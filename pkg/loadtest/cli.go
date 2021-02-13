@@ -68,8 +68,8 @@ func buildCLI(cli *CLIConfig, logger logging.Logger) *cobra.Command {
 	rootCmd.PersistentFlags().StringVar(&cfg.StatsOutputFile, "stats-output", "", "Where to store aggregate statistics (in CSV format) for the load test")
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Increase output logging verbosity to DEBUG level")
 	rootCmd.PersistentFlags().StringVar(&cfg.LcdEndpoint, "lcd", "http://127.0.0.1:1317", "URL of lcd endpoint")
-	rootCmd.PersistentFlags().Uint64Var(&cfg.Gas, "gas", 200000, "URL of lcd endpoint")
-	rootCmd.PersistentFlags().Float32Var(&cfg.GasPrices, "gas-prices", 0.1, "URL of lcd endpoint")
+	rootCmd.PersistentFlags().Uint64Var(&cfg.Gas, "gas", 200000, "gas limit to set per-transaction")
+	rootCmd.PersistentFlags().StringVar(&cfg.GasPrices, "gas-prices", "0.1basetcro", "Gas prices in decimal format to determine the transaction fee")
 
 	var masterCfg MasterConfig
 	masterCmd := &cobra.Command{

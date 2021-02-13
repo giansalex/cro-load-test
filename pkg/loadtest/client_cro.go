@@ -1,6 +1,7 @@
 package loadtest
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -48,6 +49,14 @@ func NewABCIAppClientFactory(paraphrase, chainID string) *MyABCIAppClientFactory
 func (f *MyABCIAppClientFactory) ValidateConfig(cfg Config) error {
 	// Do any checks here that you need to ensure that the load test
 	// configuration is compatible with your client.
+	if cfg.BlockPeriod < 1 {
+		return fmt.Errorf("block period shoul be greater than 0 (got %d)", cfg.BlockPeriod)
+	}
+
+	if cfg.GasPrices == "" {
+		return errors.New("gas prices cannot empty (got %d)")
+	}
+
 	return nil
 }
 
@@ -72,10 +81,12 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	fees, err := f.parseFees(cfg.GasPrices, cfg.Gas)
+	if err != nil {
+		return nil, err
+	}
 
-	fee := float64(cfg.GasPrices) * float64(cfg.Gas)
-	dec := cosmostypes.NewDec(int64(fee))
-	txBuilder.SetFeeAmount(cosmostypes.NewCoins(cosmostypes.NewCoin("basetcro", dec.RoundInt())))
+	txBuilder.SetFeeAmount(fees)
 	txBuilder.SetGasLimit(cfg.Gas)
 
 	abciClient := &MyABCIAppClient{
@@ -89,6 +100,27 @@ func (f *MyABCIAppClientFactory) NewClient(cfg Config) (Client, error) {
 		count:   0,
 	}
 	return abciClient, nil
+}
+
+func (f *MyABCIAppClientFactory) parseFees(gasPrices string, gas uint64) (cosmostypes.Coins, error) {
+
+	parsedGasPrices, err := cosmostypes.ParseDecCoins(gasPrices)
+	if err != nil {
+		return nil, err
+	}
+
+	glDec := cosmostypes.NewDec(int64(gas))
+
+	// Derive the fees based on the provided gas prices, where
+	// fee = ceil(gasPrice * gasLimit).
+	fees := make(cosmostypes.Coins, len(parsedGasPrices))
+
+	for i, gp := range parsedGasPrices {
+		fee := gp.Amount.Mul(glDec)
+		fees[i] = cosmostypes.NewCoin(gp.Denom, fee.Ceil().RoundInt())
+	}
+
+	return fees, nil
 }
 
 // GetAccount must return current account

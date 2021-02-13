@@ -40,7 +40,7 @@ type Config struct {
 	NoTrapInterrupts     bool     `json:"no_trap_interrupts"`     // Should we avoid trapping Ctrl+Break? Only relevant for standalone execution mode.
 	LcdEndpoint          string   `json:"lcd_endpoint"`           // A LCD endpoint.
 	Gas                  uint64   `json:"gas"`
-	GasPrices            float32  `json:"gas_prices"`
+	GasPrices            string   `json:"gas_prices"`
 }
 
 // MasterConfig is the configuration options specific to a master node.
