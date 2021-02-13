@@ -34,6 +34,14 @@ cro-load-test -b 5 -r 1000 \
     --gas 200000 --gas-prices 0.2basetcro
 ```
 
+- `-b`: Max block to wait txs complete
+- `-r`: Txs in batch transaction
+
+Example `-b 8 -r 1000`:
+
+![1000tx 8block](assets/sequence-8-1000.png)
+
+
 To see a description of what all of the parameters mean, simply run:
 
 ```bash
