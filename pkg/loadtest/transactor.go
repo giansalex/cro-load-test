@@ -101,7 +101,7 @@ func NewTransactor(remoteAddr string, config *Config) (*Transactor, error) {
 	account, _ := client.GetAccount()
 	address := account.GetAddress().String()
 
-	logger := logging.NewLogrusLogger(fmt.Sprintf("transactor[%s]", u.String()))
+	logger := logging.NewLogrusLogger("transactor")
 	logger.Info("Connected to remote Tendermint WebSockets RPC")
 	return &Transactor{
 		remoteAddr:               u.String(),
