@@ -366,7 +366,7 @@ func (t *Transactor) listenBlocks() (<-chan int64, error) {
 				}
 
 				if count >= t.config.BlockPeriod {
-					t.logger.Info(fmt.Sprintf("fire from block limit %d", data.Block.Height))
+					t.logger.Info(fmt.Sprintf("Sequence %d, block limit: %d", currentSeq, data.Block.Height))
 					count = 0
 					out <- data.Block.Height
 				}
