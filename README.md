@@ -20,8 +20,8 @@ make build
 `cro-load-test` can be executed in **standalone** mode
 
 ### Standalone Mode
-In standalone mode, `cro-load-test` operates in a similar way to `tm-bench`.
-This tool sends `cosmos-sdk/MsgModifyWithdrawAddress` msg.
+In standalone mode, `cro-load-test` operates in a similar way to `tm-bench`.    
+This tool sends `/cosmos.distribution.v1beta1.MsgSetWithdrawAddress` msg.
 
 Require `WALLET` and `CHAINID` environment variables.
 
