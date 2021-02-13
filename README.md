@@ -1,6 +1,6 @@
 # cro-load-test
 
-`cro-load-test` is a distributed load testing tool (and framework) for load
+`cro-load-test` is a tool for load
 testing [Crypto.com Crossfire](https://chain.crypto.com/crossfire) networks based on [tm-load-test](https://github.com/informalsystems/tm-load-test).
 
 ## Requirements
@@ -25,6 +25,7 @@ In standalone mode, `cro-load-test` operates in a similar way to `tm-bench`:
 Require `WALLET` and `CHAINID` environment variables.
 
 ```bash
+# wallet paraphrase
 export WALLET="dss hgg ssa yyrre ere ere erre ..."
 export CHAINID=crossfire
 cro-load-test -b 5 -r 1000 \
