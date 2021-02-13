@@ -221,8 +221,6 @@ func (t *Transactor) sendLoop() {
 	}
 
 	minRate := uint64(float32(t.config.Rate) * t.config.RatePercent)
-	var lastSeq uint64 = 0
-	countSame := 0
 	for {
 
 		if t.mustStop() {
@@ -236,25 +234,6 @@ func (t *Transactor) sendLoop() {
 			t.setStop(err)
 			continue
 		}
-
-		if currentSeq != lastSeq {
-			countSame = 0
-		} else {
-			countSame++
-		}
-
-		if countSame > 1 {
-			t.logger.Info("Reset mempool 1")
-			t.resetMempool()
-			t.logger.Info("Reset mempool 2")
-			t.resetMempool()
-			countSame = 0
-			t.setStop(nil)
-			t.close()
-			return
-		}
-
-		lastSeq = currentSeq
 
 		if err := t.sendTransactions(); err != nil {
 			t.logger.Error("Failed to send transactions", "err", err)
@@ -328,15 +307,6 @@ func (t *Transactor) setSequenceRequired(seq uint64) {
 	t.stopMtx.Lock()
 	t.sequence = seq
 	t.stopMtx.Unlock()
-}
-
-func (t *Transactor) resetMempool() {
-	time.Sleep(10 * time.Second)
-	err := t.crpc.UnsafeFlushMempool()
-	if err != nil {
-		t.logger.Error("Cannot reset mempool", "err", err)
-	}
-	time.Sleep(10 * time.Second)
 }
 
 func (t *Transactor) sendTransactions() error {
