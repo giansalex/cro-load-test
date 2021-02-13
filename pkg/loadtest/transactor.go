@@ -358,16 +358,11 @@ func (t *Transactor) listenBlocks() (<-chan int64, error) {
 
 				seq := t.getSequenceRequired()
 
-				if currentSeq >= seq {
+				if currentSeq >= seq || count >= t.config.BlockPeriod {
 					count = 0
+					eff := 1.0 - float64(seq-currentSeq)/float64(t.config.Rate)
 					t.logger.Info(fmt.Sprintf("Sequence %d, block: %d", currentSeq, data.Block.Height))
-					out <- data.Block.Height
-					continue
-				}
-
-				if count >= t.config.BlockPeriod {
-					t.logger.Info(fmt.Sprintf("Sequence %d, block limit: %d", currentSeq, data.Block.Height))
-					count = 0
+					t.logger.Info(fmt.Sprintf("E: %.2f %%", eff*100.0))
 					out <- data.Block.Height
 				}
 			}
