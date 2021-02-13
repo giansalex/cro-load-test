@@ -22,7 +22,11 @@ make build
 ### Standalone Mode
 In standalone mode, `cro-load-test` operates in a similar way to `tm-bench`:
 
+Require `WALLET` and `CHAINID` environment variables.
+
 ```bash
+export WALLET="dss hgg ssa yyrre ere ere erre ..."
+export CHAINID=crossfire
 cro-load-test -b 5 -r 1000 \
     --broadcast-tx-method async \
     --endpoints ws://127.0.0.1:26657/websocket \
