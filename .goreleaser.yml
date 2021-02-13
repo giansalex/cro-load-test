@@ -1,4 +1,4 @@
-project_name: tm-load-test
+project_name: cro-load-test
 
 env:
   # Require use of Go modules.
