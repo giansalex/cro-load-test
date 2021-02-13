@@ -11,7 +11,7 @@ build: build-cro-load-test
 build-cro-load-test:
 	@go build $(BUILD_FLAGS) \
 		-ldflags "-X github.com/giansalex/cro-load-test/pkg/loadtest.cliVersionCommitID=`git rev-parse --short HEAD`" \
-		-o $(BUILD_DIR)/cro-load-test ./cmd/tm-load-test/main.go
+		-o $(BUILD_DIR)/cro-load-test ./cmd/cro-load-test/main.go
 
 build-linux: build-cro-load-test-linux
 
