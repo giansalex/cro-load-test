@@ -19,6 +19,14 @@ make build
 ## Usage
 `cro-load-test` can be executed in **standalone** mode
 
+You need to enable `App RPC` in `~/chain-maind/config/app.toml` 
+```yaml
+[api]
+
+# Enable defines if the API server should be enabled.
+enable = true
+```
+
 ### Standalone Mode
 In standalone mode, `cro-load-test` operates in a similar way to `tm-bench`.    
 This tool sends `/cosmos.distribution.v1beta1.MsgSetWithdrawAddress` msg.
