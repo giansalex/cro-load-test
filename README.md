@@ -6,7 +6,7 @@ testing [Crypto.com Crossfire](https://chain.crypto.com/crossfire) networks base
 ## Requirements
 In order to build and use the tools, you will need:
 
-* Go 1.13+
+* Go 1.15+
 * `make`
 
 ## Building
